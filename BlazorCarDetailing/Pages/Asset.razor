@@ -1,0 +1,101 @@
+﻿@using CarDetailingDatabase
+@using CarDetailingDatabase.Models
+@using CarDetailingDatabase.Data
+@using BlazorCarDetailing.Models
+
+@inject IAssetData _asset
+
+<br />
+	<h4><b>Dodaj imovinu</b></h4>
+	<EditForm Model="@newAsset" OnValidSubmit="@InsertAsset">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+
+		<InputText id="name" @bind-Value="newAsset.Name"></InputText>
+		<InputNumber id="price" @bind-Value="newAsset.Price"></InputNumber>
+		<InputSelect id="type" @bind-Value="newAsset.Type.Id">
+			@if (types != null)
+			{
+			<option disabled selected>Izaberi</option>
+			@foreach (var type in types)
+				{
+				<option value=@type.Id>@type.Name</option>
+				}
+			}
+	</InputSelect>
+
+	<button type="submit" class="btn btn-primary">Spremi</button>
+	</EditForm>
+	<br />
+	@if (assets == null)
+	{
+		<p><em>Loading..</em></p>
+	}
+	else
+	{
+		<table class="table table-bordered">
+			<thead>
+				<tr>
+					<th>Artikl</th>
+					<th>Vrijednost (kn)</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var asset in assets)
+				{
+					<tr>
+						<td>@asset.Name</td>
+						<td>@asset.Price</td>
+						<td>@asset.Type.Name</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+	<br />
+	<p><b>Ukupna vrijednost: </b>@totalAsset kn</p>
+	<p><b>Ukupno (poklon): </b>@totalGift kn</p>
+	<p><b>Ukupno (kupljeno): </b>@totalBought kn</p>
+
+@code {
+	private List<AssetModel> assets;
+	private List<AssetType> types;
+	private DisplayAssetModel newAsset = new DisplayAssetModel();
+	private float totalAsset;
+	private float totalGift;
+	private float totalBought;
+
+
+	protected override async Task OnInitializedAsync()
+	{
+		assets = await _asset.GetAssets();
+		types = await _asset.GetAssetTypes();
+		totalAsset = assets.Select(a => a.Price).Sum();
+		totalGift = assets.Where(a => a.Type.Id == 1).Select(a => a.Price).Sum();
+		totalBought = assets.Where(a => a.Type.Id == 2).Select(a => a.Price).Sum();
+	}
+
+	private async Task InsertAsset()
+	{
+		if (newAsset.Type.Id != 0)
+		{
+			var asset = new AssetModel
+				{
+					Name = newAsset.Name,
+					Price = newAsset.Price,
+					Type = newAsset.Type
+				};
+			await _asset.SaveNewAsset(asset);
+			asset.Type = types.Where(t => t.Id == newAsset.Type.Id).First();
+			assets.Add(asset);
+
+			totalAsset = assets.Select(a => a.Price).Sum();
+			totalGift = assets.Where(a => a.Type.Id == 1).Select(a => a.Price).Sum();
+			totalBought = assets.Where(a => a.Type.Id == 2).Select(a => a.Price).Sum();
+		}
+		newAsset = new DisplayAssetModel();
+	}
+
+}

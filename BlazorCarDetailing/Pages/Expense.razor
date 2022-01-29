@@ -1,0 +1,99 @@
+﻿@using CarDetailingDatabase
+@using CarDetailingDatabase.Models
+@using CarDetailingDatabase.Data
+@using BlazorCarDetailing.Models
+
+@inject IAssetData _asset
+@inject IExpenseData _expense;
+
+<br />
+	<h4><b>Dodaj trošak</b></h4>
+	<EditForm Model="@newExpense" OnValidSubmit="@InsertExpense">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+		<InputSelect id="type" @bind-Value="newExpense.Website.Id">
+			@if (types != null)
+			{
+			<option disabled selected>Izaberi</option>
+			@foreach (var website in websites)
+				{
+				<option value=@website.Id>@website.Name</option>
+				}
+			}
+	</InputSelect>
+	<InputNumber id="price" @bind-Value="newExpense.Price"></InputNumber>
+	<InputDate id="bought" @bind-Value="newExpense.Bought"></InputDate>
+
+
+	<button type="submit" class="btn btn-primary">Spremi</button>
+</EditForm>
+	<br />
+	@if (expenses == null)
+	{
+		<p><em>Loading..</em></p>
+	}
+	else
+	{
+		<table class="table table-bordered">
+			<thead>
+				<tr>
+					<th>Stranica</th>
+					<th>Vrijednost (kn)</th>
+					<th>Datum narudžbe</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var expense in expenses)
+				{
+					<tr>
+						<td>@expense.Website.Name</td>
+						<td>@expense.Price</td>
+						@if (expense.Bought != DateOnly.MinValue)
+						{
+							<td>@expense.Bought</td>
+						}
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+
+	<br>
+	<p><b>Ukupni trošak: </b>@totalExpense kn</p>
+
+@code {
+	private List<ExpenseModel> expenses;
+	private DisplayExpenseModel newExpense = new DisplayExpenseModel();
+	private List<WebsiteModel> websites;
+	private List<AssetType> types;
+	private float totalExpense;
+
+	protected override async Task OnInitializedAsync()
+	{
+
+		expenses = await _expense.GetExpenses();
+		types = await _asset.GetAssetTypes();
+		websites = await _expense.GetWebsites();
+		totalExpense = expenses.Select(a => a.Price).Sum();
+	}
+
+	private async Task InsertExpense()
+	{
+		if (newExpense.Website.Id != 0)
+		{
+			var expense = new ExpenseModel
+				{
+					Website = newExpense.Website,
+					Price = newExpense.Price,
+					Bought = newExpense.Bought
+				};
+			await _expense.SaveNewExpense(expense);
+			expense.Website = websites.Where(t => t.Id == newExpense.Website.Id).First();
+			expenses.Add(expense);
+
+			totalExpense = expenses.Select(a => a.Price).Sum();
+		}
+		newExpense = new DisplayExpenseModel();
+	}
+}
