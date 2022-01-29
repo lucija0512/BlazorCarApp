@@ -1,0 +1,100 @@
+﻿@page "/washtype"
+
+@using CarDetailingDatabase
+@using CarDetailingDatabase.Models
+@using CarDetailingDatabase.Data
+@using BlazorCarDetailing.Models
+
+@inject IWashTypeData _db
+
+<h1>Vrste pranja</h1>
+<br />
+<h4><b>Dodaj novu vrstu pranja</b></h4>
+<EditForm Model="@newType" OnValidSubmit="@InsertType"> 
+	<DataAnnotationsValidator/>
+	<ValidationSummary/>
+
+	<InputText id="type" @bind-Value="newType.Type"></InputText>
+	<InputText id="description" @bind-Value="newType.Description"></InputText>
+	<InputNumber id="price" @bind-Value="newType.Price"></InputNumber>
+	@*<InputDate id="approximateDuration" @bind-Value="newType.ApproximateDuration"></InputDate>*@
+	<InputText type="time" @bind-Value="TimeProxy" />
+
+	<button type="submit" class="btn btn-primary">Spremi</button>
+</EditForm>
+
+<br />
+<br />
+
+<h4><b>Vrste pranja</b></h4>
+@if (types is null)
+{
+	<p><em>Loading..</em></p>
+}
+else 
+{
+	<table class="table table-striped">
+	<thead>
+		<tr>
+			<th>Vrsta</th>
+			<th>Opis</th>
+			<th>Cijena</th>
+			<th>Okvirno trajanje</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach(var type in types)
+		{
+			<tr>
+				<td>@type.Type</td>
+				<td>@type.Description</td>
+				<td>@type.Price kn</td>
+				@if (type.ApproximateDuration < TimeSpan.FromHours(24))
+				{
+					<td>@type.ApproximateDuration.ToString("hh\\:mm") h</td>
+				} 
+				else
+				{
+					<td>@type.ApproximateDuration.ToString("dd") dan(a)</td>
+				}
+					
+			</tr>
+		}
+	</tbody>
+</table>
+}
+
+
+@code {
+	private List<WashTypeModel> types;
+	private DisplayTypeModel newType = new DisplayTypeModel();
+	private TimeSpan LocalTime = TimeSpan.FromHours(0);
+
+	private string TimeProxy { 
+		get => newType.ApproximateDuration.ToString();
+		set => TimeSpan.TryParse(value, out LocalTime);
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		types = await _db.GetWashTypes();
+	}
+
+	private async Task InsertType()
+	{
+		var a = LocalTime;
+		WashTypeModel t = new WashTypeModel
+			{
+				Type = newType.Type,
+				Description = newType.Description,
+				Price = newType.Price,
+				ApproximateDuration = newType.ApproximateDuration
+			};
+		await _db.SaveNewWashType(t);
+
+		types.Add(t);
+
+		newType = new DisplayTypeModel();
+	}
+
+}

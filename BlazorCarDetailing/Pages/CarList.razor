@@ -1,0 +1,75 @@
+﻿@page "/carlist"
+
+@using CarDetailingDatabase
+@using CarDetailingDatabase.Models
+@using CarDetailingDatabase.Data
+@using BlazorCarDetailing.Models
+
+@inject ICarsData _db
+
+<h1>Auti</h1>
+<br />
+<h4><b>Dodaj novi auto</b></h4>
+<EditForm Model="@newCar" OnValidSubmit="@InsertCar"> 
+	<DataAnnotationsValidator/>
+	<ValidationSummary/>
+
+	<InputText id="owner" @bind-Value="newCar.Owner"></InputText>
+	<InputText id="model" @bind-Value="newCar.Model"></InputText>
+
+	<button type="submit" class="btn btn-primary">Spremi</button>
+</EditForm>
+<br />
+<br />
+
+<h4><b>Lista upisanih auti</b></h4>
+@if (cars is null)
+{
+	<p><em>Loading..</em></p>
+}
+else 
+{
+	<table class="table table-striped">
+	<thead>
+		<tr>
+			<th>Vlasnik</th>
+			<th>Model</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach(var car in cars)
+		{
+			<tr>
+				<td>@car.Owner</td>
+				<td>@car.Model</td>
+			</tr>
+		}
+	</tbody>
+</table>
+}
+
+
+@code {
+	private List<CarModel> cars;
+	private DisplayCarModel newCar = new DisplayCarModel();
+
+	protected override async Task OnInitializedAsync()
+	{
+		cars = await _db.GetCars();
+	}
+
+	private async Task InsertCar()
+	{
+		CarModel c = new CarModel
+			{
+				Owner = newCar.Owner,
+				Model = newCar.Model
+			};
+		await _db.SaveNewCar(c);
+
+		cars.Add(c);
+
+		newCar = new DisplayCarModel();
+	}
+
+}

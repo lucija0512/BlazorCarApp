@@ -1,0 +1,243 @@
+﻿@page "/wallet"
+
+@using CarDetailingDatabase
+@using CarDetailingDatabase.Models
+@using CarDetailingDatabase.Data
+@using BlazorCarDetailing.Models
+
+@inject IAssetData _asset
+@inject IExpenseData _expense;
+
+<h2>Zarada</h2>
+@if (CollapsedProfit)
+{
+	<span @onclick="@ToggleProfit" class="oi oi-plus mr-1" />
+}
+else
+{
+	<span @onclick="@ToggleProfit" class="oi oi-minus mr-1" />
+}
+@if (!CollapsedProfit)
+{
+	<div>Ukupna zarada</div>
+}
+<br />
+<hr class="solid">
+<h2>Troškovi</h2>
+@if (CollapsedExpenses)
+{
+	<span @onclick="@ToggleExpenses" class="oi oi-plus mr-1" />
+}
+else
+{
+	<span @onclick="@ToggleExpenses" class="oi oi-minus mr-1" />
+}
+@if (!CollapsedExpenses)
+{
+	<br />
+	<h4><b>Dodaj trošak</b></h4>
+	<EditForm Model="@newExpense" OnValidSubmit="@InsertExpense">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+		<InputSelect id="type" @bind-Value="newExpense.Website.Id">
+			@if (types != null)
+			{
+			<option disabled selected>Izaberi</option>
+			@foreach (var website in websites)
+				{
+				<option value=@website.Id>@website.Name</option>
+				}
+			}
+	</InputSelect>
+	<InputNumber id="price" @bind-Value="newExpense.Price"></InputNumber>
+	<InputDate id="bought" @bind-Value="newExpense.Bought"></InputDate>
+
+
+	<button type="submit" class="btn btn-primary">Spremi</button>
+</EditForm>
+	<br />
+	@if (expenses == null)
+	{
+		<p><em>Loading..</em></p>
+	}
+	else
+	{
+		<table class="table table-bordered">
+			<thead>
+				<tr>
+					<th>Stranica</th>
+					<th>Vrijednost (kn)</th>
+					<th>Datum narudžbe</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var expense in expenses)
+				{
+					<tr>
+						<td>@expense.Website.Name</td>
+						<td>@expense.Price</td>
+						@if (expense.Bought != DateOnly.MinValue)
+						{
+							<td>@expense.Bought</td>
+						}
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+
+	<br>
+	<p><b>Ukupni trošak: </b>@totalExpense kn</p>
+}
+<hr class="solid">
+<h2>Imovina</h2>
+@if (CollapsedAssets)
+{
+	<span @onclick="@ToggleAssets" class="oi oi-plus mr-1" />
+}
+else
+{
+	<span @onclick="@ToggleAssets" class="oi oi-minus mr-1" />
+}
+@if (!CollapsedAssets)
+{
+	<br />
+	<h4><b>Dodaj imovinu</b></h4>
+	<EditForm Model="@newAsset" OnValidSubmit="@InsertAsset">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+
+		<InputText id="name" @bind-Value="newAsset.Name"></InputText>
+		<InputNumber id="price" @bind-Value="newAsset.Price"></InputNumber>
+		<InputSelect id="type" @bind-Value="newAsset.Type.Id">
+			@if (types != null)
+			{
+			<option disabled selected>Izaberi</option>
+			@foreach (var type in types)
+				{
+				<option value=@type.Id>@type.Name</option>
+				}
+			}
+	</InputSelect>
+
+	<button type="submit" class="btn btn-primary">Spremi</button>
+	</EditForm>
+	<br />
+	@if (assets == null)
+	{
+		<p><em>Loading..</em></p>
+	}
+	else
+	{
+		<table class="table table-bordered">
+			<thead>
+				<tr>
+					<th>Artikl</th>
+					<th>Vrijednost (kn)</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var asset in assets)
+				{
+					<tr>
+						<td>@asset.Name</td>
+						<td>@asset.Price</td>
+						<td>@asset.Type.Name</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+	<br />
+	<p><b>Ukupna vrijednost: </b>@totalAsset kn</p>
+	<p><b>Ukupno (poklon): </b>@totalGift kn</p>
+	<p><b>Ukupno (kupljeno): </b>@totalBought kn</p>
+}
+<hr class="solid">
+
+@code {
+	private bool CollapsedProfit  = true;
+	private bool CollapsedExpenses  = true;
+	private bool CollapsedAssets  = true;
+	private List<AssetModel> assets;
+	private List<WebsiteModel> websites;
+	private List<ExpenseModel> expenses;
+	private List<AssetType> types;
+	private DisplayAssetModel newAsset = new DisplayAssetModel();
+	private DisplayExpenseModel newExpense = new DisplayExpenseModel();
+	private float totalAsset;
+	private float totalGift;
+	private float totalBought;
+	private float totalExpense;
+
+	void ToggleExpenses()
+	{
+		CollapsedExpenses = !CollapsedExpenses;
+	}
+
+	void ToggleAssets()
+	{
+		CollapsedAssets = !CollapsedAssets;
+	}
+
+	void ToggleProfit()
+	{
+		CollapsedProfit = !CollapsedProfit;
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		assets = await _asset.GetAssets();
+		expenses = await _expense.GetExpenses();
+		types = await _asset.GetAssetTypes();
+		websites = await _expense.GetWebsites();
+		totalAsset = assets.Select(a => a.Price).Sum();
+		totalGift = assets.Where(a => a.Type.Id == 1).Select(a => a.Price).Sum();
+		totalBought = assets.Where(a => a.Type.Id == 2).Select(a => a.Price).Sum();
+		totalExpense = expenses.Select(a => a.Price).Sum();
+	}
+
+	private async Task InsertAsset()
+	{
+		if (newAsset.Type.Id != 0)
+		{
+			var asset = new AssetModel
+				{
+					Name = newAsset.Name,
+					Price = newAsset.Price,
+					Type = newAsset.Type
+				};
+			await _asset.SaveNewAsset(asset);
+			asset.Type = types.Where(t => t.Id == newAsset.Type.Id).First();
+			assets.Add(asset);
+
+			totalAsset = assets.Select(a => a.Price).Sum();
+			totalGift = assets.Where(a => a.Type.Id == 1).Select(a => a.Price).Sum();
+			totalBought = assets.Where(a => a.Type.Id == 2).Select(a => a.Price).Sum();
+		}
+		newAsset = new DisplayAssetModel();
+	}
+
+	private async Task InsertExpense()
+	{
+		if (newExpense.Website.Id != 0)
+		{
+			var expense = new ExpenseModel
+				{
+					Website = newExpense.Website,
+					Price = newExpense.Price,
+					Bought = newExpense.Bought
+				};
+			await _expense.SaveNewExpense(expense);
+			expense.Website = websites.Where(t => t.Id == newExpense.Website.Id).First();
+			expenses.Add(expense);
+
+			totalExpense = expenses.Select(a => a.Price).Sum();
+		}
+		newExpense = new DisplayExpenseModel();
+	}
+
+}
